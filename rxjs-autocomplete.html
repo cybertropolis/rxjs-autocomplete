@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+
+    <script src="https://unpkg.com/@reactivex/rxjs@6.3.3/dist/global/rxjs.umd.js"></script>
+
+    <title>Firearms Shop</title>
+
+    <style>
+        body {
+            background-color: #222222;
+            margin: 0;
+        }
+
+        .content {
+            padding: 10px;
+        }
+
+        input {
+            color: #ffffff;
+            padding-left: 10px;
+            padding-right: 10px;
+            border-radius: 5px;
+            border: solid 2px #333333;
+            box-sizing: border-box;
+            max-height: 50%;
+            overflow: auto;
+            background-color: #555555;
+            width: 100%;
+        }
+
+        input::placeholder {
+            color: #aaaaaa;
+        }
+
+        li {
+            padding: 10px;
+            cursor: pointer;
+            color: #ffffff;
+            border-radius: 5px;
+            border: solid 2px #333333;
+            box-sizing: border-box;
+            max-height: 50%;
+            overflow: auto;
+            background-color: #555555;
+        }
+
+        li:not(:last-of-type) {
+            border-bottom: solid 2px #333333;
+        }
+
+        ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="content">
+        <input type="text" placeholder="Gun..." />
+        <ul></ul>
+    </div>
+
+    <script>
+        const { fromEvent, ajax: { ajax }, of } = rxjs;
+        const { pluck, map, debounceTime, switchMap, catchError, distinctUntilChanged, startWith } = rxjs.operators;
+
+        const input = fromEvent(document.querySelector("input"), "input");
+        const ul = document.querySelector("ul");
+
+        const showResult = result => {
+            ul.innerHTML = result.map(e => `<li>${e}</li>`).join('');
+        }
+
+        const getGuns = search => ajax(`https://restcountries.eu/rest/v2/name/${search}?fields=name`).pipe(
+            pluck('response'),
+            map(response => response.map(item => item.name))
+        );
+
+        input.pipe(
+            debounceTime(300),
+            pluck('target', 'value'),
+            map(item => item.trim()),
+            distinctUntilChanged(),
+            switchMap(value => {
+                if (!value || value.length < 3) {
+                    return of([]);
+                }
+
+                return getGuns(value);
+            }),
+            catchError((error, source) => {
+                return source.pipe(
+                    startWith([])
+                );
+            })
+        ).subscribe(showResult);
+    </script>
+</body>
+
+</html>
